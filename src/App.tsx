@@ -32,7 +32,8 @@ import {
   Lock,
   ExternalLink,
   Globe,
-  List
+  List,
+  Download
 } from "lucide-react";
 import { 
   fetchInterviewQuestions, 
@@ -98,6 +99,222 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("interview_favorites", JSON.stringify(favorites));
   }, [favorites]);
+
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
+  const downloadPDF = async () => {
+    if (!answerData) return;
+    setIsGeneratingPdf(true);
+    try {
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF();
+
+      // Fetch NanumGothic regular font
+      const fontUrl = "https://fonts.gstatic.com/s/nanumgothic/v23/PN_oR9W2T07saT8cx_z7Gy8ybO7K.ttf";
+      let fontBase64 = "";
+      try {
+        const response = await fetch(fontUrl);
+        const blob = await response.blob();
+        fontBase64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64String = reader.result as string;
+            resolve(base64String.split(",")[1]);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      } catch (err) {
+        console.error("Font loading failed, falling back to window.print()", err);
+        alert("PDF 폰트 로드 실패로 인쇄 화면으로 대체합니다. 인쇄 설정에서 'PDF로 저장'을 선택할 수 있습니다.");
+        window.print();
+        setIsGeneratingPdf(false);
+        return;
+      }
+
+      // Add font to vfs and register
+      doc.addFileToVFS("NanumGothic.ttf", fontBase64);
+      doc.addFont("NanumGothic.ttf", "NanumGothic", "normal");
+      doc.setFont("NanumGothic");
+
+      let y = 20;
+
+      const writeText = (text: string, fontSize = 10, isBold = false, color = "#111827", indent = 0) => {
+        doc.setFontSize(fontSize);
+        // set text color
+        if (color.startsWith("#")) {
+          // Convert hex to rgb
+          const r = parseInt(color.slice(1, 3), 16);
+          const g = parseInt(color.slice(3, 5), 16);
+          const b = parseInt(color.slice(5, 7), 16);
+          doc.setTextColor(r, g, b);
+        } else {
+          doc.setTextColor(17, 24, 39);
+        }
+
+        const maxLineWidth = 180 - indent;
+        const splitText = doc.splitTextToSize(text, maxLineWidth);
+        for (const line of splitText) {
+          if (y > 275) {
+            doc.addPage();
+            y = 20;
+          }
+          doc.text(line, 15 + indent, y);
+          y += fontSize * 0.45 + 3.5;
+        }
+      };
+
+      const writeLine = () => {
+        if (y > 275) {
+          doc.addPage();
+          y = 20;
+        }
+        doc.setDrawColor(229, 231, 235);
+        doc.line(15, y, 195, y);
+        y += 10;
+      };
+
+      const addSpacing = (height: number) => {
+        y += height;
+        if (y > 275) {
+          doc.addPage();
+          y = 20;
+        }
+      };
+
+      // Header Banner
+      doc.setFillColor(15, 23, 42); // slate-900
+      doc.rect(15, y, 180, 25, "F");
+      
+      doc.setFontSize(14);
+      doc.setTextColor(255, 255, 255);
+      doc.text("AI 면접 준비 전략 리포트 - 합격 시나리오", 25, y + 15);
+      y += 35;
+
+      // Report Info
+      writeText(`지원 기업: ${company || "목표 기업"}`, 12, true, "#2563EB");
+      writeText(`리포트 발급일: ${new Date().toLocaleDateString()}`, 10, false, "#6B7280");
+      addSpacing(8);
+      writeLine();
+
+      // Question Section
+      writeText("1. 면접 기출 질문", 14, true, "#1E3A8A");
+      addSpacing(4);
+      
+      doc.setFillColor(243, 244, 246);
+      doc.rect(15, y, 180, 20, "F");
+      y += 12;
+      writeText(`"${answerData.analysis.question}"`, 11, true, "#111827", 10);
+      y = Math.max(y, y + 8);
+      addSpacing(10);
+
+      // Competencies
+      writeText(`핵심 역량 키워드: ${(answerData.analysis.competencies || []).join(", ")}`, 11, true, "#111827");
+      addSpacing(6);
+      writeLine();
+
+      // Strategic Analysis
+      writeText("2. 전략적 질문 분석", 14, true, "#1E3A8A");
+      addSpacing(6);
+      
+      writeText("■ 기업 핵심가치 연계", 11, true, "#2563EB");
+      writeText(answerData.analysis.coreValueLink, 10, false, "#374151", 5);
+      addSpacing(6);
+
+      writeText("■ 최적 이력 소재 선정", 11, true, "#2563EB");
+      writeText(answerData.analysis.bestMaterial, 10, true, "#111827", 5);
+      writeText(answerData.analysis.matchingReason, 10, false, "#4B5563", 5);
+      addSpacing(8);
+      writeLine();
+
+      // STAR Answer Versions
+      writeText("3. STAR 기법 기반 합격 답변 시나리오", 14, true, "#1E3A8A");
+      addSpacing(8);
+
+      for (const version of answerData.versions) {
+        writeText(`▶ 답변 버전: ${version.title.toUpperCase()}`, 12, true, "#2563EB");
+        writeText(`설명: ${version.description}`, 10, false, "#6B7280", 5);
+        addSpacing(4);
+
+        // STAR Steps
+        if (version.star) {
+          const starLabels: Record<string, string> = {
+            s: "S (Situation - 상황):",
+            t: "T (Task - 과제):",
+            a: "A (Action - 행동):",
+            r: "R (Result - 결과):"
+          };
+          for (const [key, label] of Object.entries(starLabels)) {
+            const stepText = (version.star as any)[key];
+            if (stepText) {
+              writeText(label, 10, true, "#2563EB", 5);
+              writeText(stepText, 9.5, false, "#374151", 10);
+              addSpacing(2);
+            }
+          }
+        }
+        addSpacing(4);
+
+        // Integrated Answer
+        writeText("■ 완성된 답변 전체 텍스트 (모범 예시)", 11, true, "#111827", 5);
+        writeText(`"${version.fullText}"`, 10, false, "#1F2937", 8);
+        addSpacing(10);
+      }
+      writeLine();
+
+      // Answer Guidelines
+      writeText("4. 답변 전략 및 가이드라인", 14, true, "#1E3A8A");
+      addSpacing(6);
+
+      writeText("■ 권장 사항 (DO)", 11, true, "#16A34A");
+      for (const item of (answerData.tips.dos || [])) {
+        writeText(`✓ ${item}`, 10, false, "#374151", 5);
+      }
+      addSpacing(6);
+
+      writeText("■ 주의 사항 (DON'T)", 11, true, "#DC2626");
+      for (const item of (answerData.tips.donts || [])) {
+        writeText(`✕ ${item}`, 10, false, "#374151", 5);
+      }
+      addSpacing(8);
+      writeLine();
+
+      // Follow-up Questions
+      writeText("5. 예상 꼬리 질문 및 대비 가이드", 14, true, "#1E3A8A");
+      addSpacing(6);
+
+      for (let i = 0; i < (answerData.tips.followUp || []).length; i++) {
+        const item = answerData.tips.followUp[i];
+        writeText(`Q${i + 1}. ${item.question}`, 11, true, "#111827", 2);
+        writeText(`대비 가이드: ${item.guide}`, 10, false, "#4B5563", 6);
+        addSpacing(4);
+      }
+      addSpacing(6);
+      writeLine();
+
+      // Evaluation points
+      writeText("6. 종합 평가 포인트", 14, true, "#1E3A8A");
+      addSpacing(6);
+
+      if (answerData.tips.evalPoints) {
+        writeText("■ 본 답변의 핵심 강점", 11, true, "#2563EB");
+        writeText(answerData.tips.evalPoints.strength, 10, false, "#374151", 5);
+        addSpacing(4);
+
+        writeText("■ 면접관 추가 어필 포인트", 11, true, "#2563EB");
+        writeText(answerData.tips.evalPoints.extra, 10, false, "#374151", 5);
+      }
+
+      // Save PDF
+      const fileName = `${company || "Interview"}_Answer_Report.pdf`;
+      doc.save(fileName);
+    } catch (error) {
+      console.error("PDF generation error: ", error);
+      alert("PDF 다운로드 중 오류가 발생했습니다. 브라우저 인쇄 화면(Ctrl+P)을 통해 PDF로 저장해보세요!");
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -1265,12 +1482,31 @@ export default function App() {
                       ))}
                     </div>
                   </div>
-                  <button 
-                    onClick={() => setStep("QUESTIONS")}
-                    className="p-4 hover:bg-white/5 rounded-2xl transition-colors shrink-0"
-                  >
-                    <ArrowLeft className="w-8 h-8 text-dark-accent" />
-                  </button>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <button 
+                      onClick={downloadPDF}
+                      disabled={isGeneratingPdf}
+                      className="px-5 py-3.5 bg-dark-accent/10 hover:bg-dark-accent/20 border border-dark-accent/30 rounded-2xl text-dark-accent hover:text-white transition-all flex items-center gap-2 font-black text-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isGeneratingPdf ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>PDF 생성 중...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Download className="w-4 h-4" />
+                          <span>PDF 다운로드</span>
+                        </>
+                      )}
+                    </button>
+                    <button 
+                      onClick={() => setStep("QUESTIONS")}
+                      className="p-4 hover:bg-white/5 rounded-2xl transition-colors"
+                    >
+                      <ArrowLeft className="w-8 h-8 text-dark-accent" />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-12 pt-12 border-t border-white/10">
