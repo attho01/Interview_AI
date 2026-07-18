@@ -78,8 +78,20 @@ const SYSTEM_INSTRUCTION = `
 - 정량적 성과 지표 필수 포함 (단, 개인 데이터에 없으면 "구체적 수치 보완 필요" 표시)
 `;
 
+// Safe GoogleGenAI client builder that checks for valid API key encoding (preventing ISO-8859-1 header errors)
+function getAIClient(apiKey?: string): GoogleGenAI {
+  const trimmed = (apiKey || "").trim();
+  if (!trimmed) {
+    throw new Error("API Key가 누락되었습니다. API Key를 입력해주세요.");
+  }
+  if (/[^\x00-\xFF]/.test(trimmed)) {
+    throw new Error("API Key에 한글이나 허용되지 않는 특수문자가 포함되어 있습니다. 공백이나 잘못 입력된 문자가 없는지 다시 확인해 주세요.");
+  }
+  return new GoogleGenAI({ apiKey: trimmed });
+}
+
 export async function fetchInterviewQuestions(company: string, jobInfo: string, apiKey?: string): Promise<{ source: string; date: string; industry: string; categories: QuestionCategory[] }> {
-  const ai = new GoogleGenAI({ apiKey: apiKey || "" });
+  const ai = getAIClient(apiKey);
   const prompt = `
     기업명: ${company}
     채용공고/직무: ${jobInfo}
@@ -158,7 +170,7 @@ export async function generateInterviewAnswers(
   personalDataParts: Part[],
   apiKey?: string
 ): Promise<{ analysis: Analysis; versions: AnswerVersion[]; tips: any }> {
-  const ai = new GoogleGenAI({ apiKey: apiKey || "" });
+  const ai = getAIClient(apiKey);
   const textPart: Part = {
     text: `
       기업명: ${company}
@@ -276,7 +288,7 @@ export async function startSimulation(
   personalDataParts: Part[],
   apiKey?: string
 ): Promise<string> {
-  const ai = new GoogleGenAI({ apiKey: apiKey || "" });
+  const ai = getAIClient(apiKey);
   const prompt = `
     기업명: ${company}
     직무: ${jobInfo}
@@ -307,7 +319,7 @@ export async function processSimulationAnswer(
   history: SimulationTurn[],
   apiKey?: string
 ): Promise<{ feedback: SimulationFeedback; nextQuestion: string }> {
-  const ai = new GoogleGenAI({ apiKey: apiKey || "" });
+  const ai = getAIClient(apiKey);
   const prompt = `
     현재 질문: ${question}
     지원자 답변: ${answer}
@@ -361,7 +373,7 @@ export async function validateApiKey(apiKey: string): Promise<{ valid: boolean; 
   if (!trimmedKey) return { valid: false, error: "API Key를 입력해주세요." };
   
   try {
-    const ai = new GoogleGenAI({ apiKey: trimmedKey });
+    const ai = getAIClient(trimmedKey);
     // Use a very small model and simple prompt to minimize latency and cost
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
@@ -381,6 +393,16 @@ export async function validateApiKey(apiKey: string): Promise<{ valid: boolean; 
     
     const errorMessage = error.message || "";
     const status = error.status;
+
+    // Handle custom threw errors directly
+    if (errorMessage.includes("한글이나 허용되지 않는 특수문자") || errorMessage.includes("누락되었습니다")) {
+      return { valid: false, error: errorMessage };
+    }
+
+    // Handle header append error explicitly
+    if (errorMessage.includes("ISO-8859-1") || errorMessage.includes("Headers") || errorMessage.includes("append") || errorMessage.includes("code point")) {
+      return { valid: false, error: "API Key에 한글이나 허용되지 않는 특수문자가 포함되어 있습니다. 올바른 키 형식인지 다시 확인해 주세요." };
+    }
 
     // 1. Authentication Errors (Invalid Key)
     if (errorMessage.includes("API_KEY_INVALID") || 

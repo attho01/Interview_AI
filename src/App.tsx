@@ -545,10 +545,23 @@ export default function App() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="space-y-32 py-12"
+              className="space-y-32 py-12 relative"
             >
+              {/* Subtle background image of job interview */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-screen max-w-[100vw] h-[650px] pointer-events-none z-0 overflow-hidden opacity-[0.06] mix-blend-luminosity">
+                <img 
+                  src="https://images.unsplash.com/photo-1521791136064-7986c2920216?auto=format&fit=crop&q=80&w=1920" 
+                  alt="Job Interview Background" 
+                  className="w-full h-full object-cover filter blur-[1px]" 
+                  referrerPolicy="no-referrer"
+                />
+                {/* Smooth masking radial gradient */}
+                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#080C19]/60 to-[#080C19]" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_20%,#080C19_80%)]" />
+              </div>
+
               {/* Hero Section */}
-              <div className="text-center space-y-8 max-w-4xl mx-auto">
+              <div className="text-center space-y-8 max-w-4xl mx-auto relative z-10">
                 <motion.div 
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
