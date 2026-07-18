@@ -1,0 +1,81 @@
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Pretendard Variable", "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  
+  --color-brand-bg: #F8F9FB;
+  --color-brand-ink: #1A1A1A;
+  --color-brand-primary: #2D2E7E;
+  --color-brand-accent: #6366F1;
+  --color-brand-secondary: #E8E9FF;
+  --color-brand-muted: #6B7280;
+
+  /* Dark Theme Colors */
+  --color-dark-bg: #050505;
+  --color-dark-card: rgba(255, 255, 255, 0.03);
+  --color-dark-border: rgba(255, 255, 255, 0.08);
+  --color-dark-accent: #3B82F6;
+  --color-dark-secondary: #10B981;
+}
+
+@layer base {
+  body {
+    @apply bg-brand-bg text-brand-ink font-sans antialiased tracking-tight transition-colors duration-500;
+  }
+}
+
+@layer components {
+  .vibe-card {
+    @apply bg-white border border-black/[0.03] shadow-[0_4px_20px_rgba(0,0,0,0.03)] rounded-[24px] overflow-hidden transition-all duration-300;
+  }
+
+  .glass-card {
+    @apply bg-[#0D1426]/40 backdrop-blur-3xl border border-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.5)] rounded-[24px] overflow-hidden transition-all duration-500;
+  }
+  
+  .vibe-button-primary {
+    @apply bg-white text-[#080C19] px-8 py-4 rounded-full font-bold hover:bg-white/95 hover:shadow-[0_4px_24px_rgba(255,255,255,0.2)] transition-all duration-300 flex items-center justify-center gap-2 active:scale-95;
+  }
+
+  .glow-button {
+    @apply bg-white text-[#080C19] px-8 py-4 rounded-full font-extrabold hover:bg-white/90 hover:shadow-[0_0_30px_rgba(255,255,255,0.3)] transition-all duration-300 flex items-center justify-center gap-2 active:scale-95;
+  }
+
+  .vibe-button-secondary {
+    @apply bg-white/5 text-white border border-white/10 px-8 py-4 rounded-full font-bold hover:bg-white/10 transition-all duration-300 flex items-center justify-center gap-2 active:scale-95;
+  }
+  
+  .vibe-label {
+    @apply text-xs font-black tracking-widest text-white/40 uppercase;
+  }
+
+  .dark-label {
+    @apply text-xs font-black text-white/50 uppercase tracking-widest;
+  }
+  
+  .vibe-grid-bg {
+    background-image: 
+      linear-gradient(rgba(255, 255, 255, 0.01) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.01) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  .dark-atmosphere {
+    background: 
+      radial-gradient(circle at 50% -10%, rgba(59, 130, 246, 0.12), transparent 45%),
+      radial-gradient(circle at 100% 60%, rgba(245, 158, 11, 0.08), transparent 40%),
+      radial-gradient(circle at 10% 80%, rgba(99, 102, 241, 0.1), transparent 45%),
+      #080C19;
+  }
+
+  .vibe-gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60;
+  }
+
+  .dark-gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-white via-white/90 to-white/50;
+  }
+}

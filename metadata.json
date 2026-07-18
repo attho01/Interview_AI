@@ -1,0 +1,8 @@
+{
+  "name": "AI 면접코치",
+  "description": "실시간 채용 기출 분석 및 융합형 면접 대비 솔루션. Gemini API를 활용한 맞춤형 STAR 가이드 및 모의 질문 생성 엔진.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
